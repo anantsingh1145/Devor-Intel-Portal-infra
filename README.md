@@ -1,0 +1,1 @@
+# Devor-Intel-Portal-infra
