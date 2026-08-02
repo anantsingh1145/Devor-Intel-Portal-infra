@@ -1,0 +1,24 @@
+.terraform/
+.terraform.tfstate.lock.info
+
+*.tfstate
+*.tfstate.*
+
+# Local-only var overrides. Non-secret per-environment values live in
+# environments/<env>.tfvars and ARE committed; actual secret values go in
+# environments/<env>.secrets.tfvars, which is NEVER committed.
+*.auto.tfvars
+*.secrets.tfvars
+
+crash.log
+crash.*.log
+
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+.terraformrc
+terraform.rc
+
+.DS_Store

@@ -1,0 +1,163 @@
+name: Deploy Infra for Devor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/**"
+      - "environments/**"
+      - "*.tf"
+
+# No top-level `permissions:` block on purpose: id-token: write (needed for
+# AWS OIDC) is granted only to the jobs that actually authenticate to AWS,
+# not to the tfsec job, which runs a third-party action and has no business
+# being able to mint an OIDC token even if that action were compromised.
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  TF_VERSION: "1.15.8"
+
+# One global (not per-branch) group: every run targets the same shared AWS
+# account/state via environments/backend.hcl, so two runs must never plan or
+# apply concurrently even if triggered from different branches.
+concurrency:
+  group: deploy-infra-for-devor
+  cancel-in-progress: false
+
+jobs:
+  terraform-security-scan:
+    name: tfsec
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
+        with:
+          working_directory: .
+          soft_fail: false
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: terraform-security-scan
+    permissions:
+      id-token: write # required for requesting the AWS OIDC JWT
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_DEVOR_OIDC_SA }}
+          role-session-name: deploy-infra-plan
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: .terraform
+          key: terraform-devor-${{ hashFiles('.terraform.lock.hcl') }}
+
+      - name: Terraform init
+        run: terraform init -backend-config=environments/backend.hcl -input=false
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        env:
+          # JSON-encoded map(string), e.g. {"ANTHROPIC_API_KEY":"...","SMTP_PASSWORD":"..."}.
+          # Keep in sync with environments/devor.secrets.tfvars.example.
+          TF_VAR_secrets: ${{ secrets.DEVOR_TF_SECRETS_JSON }}
+        run: |
+          terraform plan \
+            -var-file=environments/devor.tfvars \
+            -input=false \
+            -no-color \
+            -out=tfplan
+
+      # The plan file itself still contains unredacted secret values even
+      # though `sensitive` marking hides them from CLI/JSON display — encrypt
+      # before it leaves the runner so the artifact isn't cleartext at rest.
+      - name: Encrypt plan artifact
+        env:
+          TFPLAN_ENCRYPTION_KEY: ${{ secrets.TFPLAN_ENCRYPTION_KEY }}
+        run: |
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 \
+            --output tfplan.gpg tfplan <<< "$TFPLAN_ENCRYPTION_KEY"
+          rm -f tfplan
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-devor
+          path: tfplan.gpg
+          retention-days: 5
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    # Pauses here until someone approves the deployment. Configure this once
+    # in GitHub: Settings > Environments > New environment "prod" >
+    # add required reviewers.
+    environment: prod
+    permissions:
+      id-token: write # required for requesting the AWS OIDC JWT
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: ${{ secrets.AWS_DEVOR_OIDC_SA }}
+          role-session-name: deploy-infra-apply
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: terraform init -backend-config=environments/backend.hcl -input=false
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-devor
+
+      - name: Decrypt plan artifact
+        env:
+          TFPLAN_ENCRYPTION_KEY: ${{ secrets.TFPLAN_ENCRYPTION_KEY }}
+        run: |
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 \
+            --decrypt --output tfplan tfplan.gpg <<< "$TFPLAN_ENCRYPTION_KEY"
+          rm -f tfplan.gpg
+
+      # No -var-file here: the values are already baked into the saved plan.
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve tfplan
