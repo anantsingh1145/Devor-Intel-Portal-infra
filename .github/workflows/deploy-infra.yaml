@@ -42,6 +42,12 @@ jobs:
         with:
           working_directory: .
           soft_fail: false
+          # Without this, the action's setup script calls the GitHub API
+          # unauthenticated to download the tfsec binary and hits the shared
+          # 60-req/hour anonymous rate limit almost immediately on
+          # GitHub-hosted runners (shared IP ranges). GITHUB_TOKEN is
+          # auto-provided in every run — no secret to create.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
   terraform-plan:
     name: Terraform Plan
