@@ -85,11 +85,22 @@ variable "app_environment" {
   default     = {}
 }
 
-variable "secrets" {
-  description = "Map of container env var name => secret value (e.g. { ANTHROPIC_API_KEY = \"...\", SMTP_PASSWORD = \"...\" }). Stored in Secrets Manager and injected at task startup. Add a new key to add a new secret — no code changes needed."
-  type        = map(string)
-  sensitive   = true
-  default     = {}
+variable "secret_names" {
+  description = "Container env var names to create as empty Secrets Manager secrets (e.g. [\"SERPER_API_KEY\", \"SMTP_PASSWORD\"]). Terraform only creates the secret container — no value is ever set here or anywhere else in code. Populate the actual value manually after apply, e.g. `aws secretsmanager put-secret-value --secret-id <name> --secret-string '<value>'`, or via the console. The task will fail to start until every secret listed here has a value."
+  type        = list(string)
+  default     = ["SERPER_API_KEY", "SMTP_PASSWORD", "WEBHOOK_URL"]
+}
+
+# --- Bedrock (Claude via AWS Bedrock, replacing a direct Anthropic API key) ---
+
+variable "bedrock_inference_profile_id" {
+  description = "Cross-region inference profile ID for Claude on Bedrock, e.g. \"apac.anthropic.claude-<model>-<date>-v<N>:0\". PLACEHOLDER — verify the current one for your account/region with `aws bedrock list-inference-profiles --region <region>` before applying; Bedrock model IDs change over time and are not guessed here."
+  type        = string
+}
+
+variable "bedrock_foundation_model_id" {
+  description = "Base foundation model ID underlying var.bedrock_inference_profile_id, without the geographic prefix, e.g. \"anthropic.claude-<model>-<date>-v<N>:0\". Needed alongside the inference profile ARN because Bedrock may route the request to any region within the profile — verify with `aws bedrock list-foundation-models --region <region>`."
+  type        = string
 }
 
 # --- Autoscaling ---

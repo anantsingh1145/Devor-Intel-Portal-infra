@@ -24,10 +24,24 @@ app_environment = {
   SMTP_USER        = "chronicle@example.com"
   EMAIL_RECIPIENTS = "you@example.com"
 }
-# Real secret values (ANTHROPIC_API_KEY, SMTP_PASSWORD, ...) go in a
-# gitignored devor.secrets.tfvars — see devor.secrets.tfvars.example.
-# In CI, the same map is supplied via the TF_VAR_secrets env var instead
-# (see .github/workflows/deploy-infra.yaml).
+# BEDROCK_MODEL_ID and AWS_REGION are merged into the container's environment
+# in main.tf (from bedrock_inference_profile_id/aws_region below) — not
+# listed here, to keep the model ID in one place.
+
+# secret_names uses its default (SERPER_API_KEY, SMTP_PASSWORD, WEBHOOK_URL) —
+# no code-supplied values anywhere. Set each one manually after apply:
+#   aws secretsmanager put-secret-value --secret-id devor/prod/SERPER_API_KEY --secret-string '<value>'
+# (repeat per secret). The ECS task will fail to start until all 3 have values.
+
+# --- Bedrock (Claude via AWS Bedrock, no Anthropic API key needed) ---
+# PLACEHOLDERS — verify before applying:
+#   aws bedrock list-inference-profiles --region ap-south-1
+#   aws bedrock list-foundation-models --region ap-south-1
+# ap-south-1 may not host Claude directly; a cross-region profile (e.g. an
+# "apac." prefix) may be required, and its primary invocation region may
+# differ from ap-south-1 — confirm both before relying on this.
+bedrock_inference_profile_id = "REPLACE_ME_apac.anthropic.claude-<model>-<date>-v<N>:0"
+bedrock_foundation_model_id  = "REPLACE_ME_anthropic.claude-<model>-<date>-v<N>:0"
 
 # --- Autoscaling ---
 enable_autoscaling       = true

@@ -83,7 +83,7 @@ module "secrets" {
   source = "./modules/secrets"
 
   name_prefix             = "${var.project_name}/${var.environment}"
-  secrets                 = var.secrets
+  secret_names            = var.secret_names
   recovery_window_in_days = var.environment == "prod" ? 30 : 0
   tags                    = local.common_tags
 }
@@ -95,6 +95,17 @@ module "iam" {
   secret_arns          = values(module.secrets.secret_arns)
   efs_file_system_arn  = module.efs.file_system_arn
   efs_access_point_arn = module.efs.access_point_arn
+  tags                 = local.common_tags
+}
+
+module "bedrock" {
+  source = "./modules/bedrock"
+
+  name_prefix          = local.name_prefix
+  task_role_name       = module.iam.task_role_name
+  aws_region           = var.aws_region
+  inference_profile_id = var.bedrock_inference_profile_id
+  foundation_model_id  = var.bedrock_foundation_model_id
   tags                 = local.common_tags
 }
 
@@ -122,8 +133,14 @@ module "fargate" {
   image          = "${module.ecr.repository_url}:${var.image_tag}"
   container_port = var.app_port
 
-  environment = var.app_environment
-  secrets     = module.secrets.secret_arns
+  # BEDROCK_MODEL_ID/AWS_REGION merged in here (not hardcoded in the fargate
+  # module) so the model ID has one source of truth — the same variable also
+  # used to build the IAM resource ARN in module.bedrock.
+  environment = merge(var.app_environment, {
+    BEDROCK_MODEL_ID = var.bedrock_inference_profile_id
+    AWS_REGION       = var.aws_region
+  })
+  secrets = module.secrets.secret_arns
 
   log_group_name = module.logs.log_group_name
   aws_region     = var.aws_region
@@ -144,6 +161,12 @@ module "fargate" {
   autoscaling_cpu_target   = var.autoscaling_cpu_target
 
   tags = local.common_tags
+
+  # No output from module.bedrock is actually consumed above (the task role
+  # ARN already comes from module.iam) — but the running task needs Bedrock
+  # invoke permission to exist before it starts, so this is an explicit,
+  # honest dependency edge rather than an implicit one.
+  depends_on = [module.bedrock]
 }
 
 module "route53" {

@@ -20,3 +20,8 @@ output "task_role_arn" {
   # it starts, not just the bare role.
   depends_on = [aws_iam_role_policy.task_efs]
 }
+
+output "task_role_name" {
+  description = "Name of the ECS task role, consumed by modules/bedrock to attach the Bedrock invoke policy."
+  value       = aws_iam_role.task.name
+}

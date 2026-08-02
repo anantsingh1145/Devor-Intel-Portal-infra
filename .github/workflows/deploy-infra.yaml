@@ -82,11 +82,10 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      # No TF_VAR_secrets needed: secret_names is just a list of names (not
+      # sensitive), and no secret values are ever supplied through Terraform —
+      # they're set manually in Secrets Manager after apply.
       - name: Terraform plan
-        env:
-          # JSON-encoded map(string), e.g. {"ANTHROPIC_API_KEY":"...","SMTP_PASSWORD":"..."}.
-          # Keep in sync with environments/devor.secrets.tfvars.example.
-          TF_VAR_secrets: ${{ secrets.DEVOR_TF_SECRETS_JSON }}
         run: |
           terraform plan \
             -var-file=environments/devor.tfvars \

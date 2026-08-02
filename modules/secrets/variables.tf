@@ -3,10 +3,9 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "secrets" {
-  description = "Map of secret name => sensitive value (e.g. { anthropic_api_key = \"...\", smtp_password = \"...\" }). Add a new key here to create a new secret — no module code changes needed."
-  type        = map(string)
-  sensitive   = true
+variable "secret_names" {
+  description = "Secret names to create as empty containers (e.g. [\"SERPER_API_KEY\", \"SMTP_PASSWORD\"]). No values pass through this module — set them manually after apply. Add a name here to create a new secret — no module code changes needed."
+  type        = list(string)
 }
 
 variable "recovery_window_in_days" {
