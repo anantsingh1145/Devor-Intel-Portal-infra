@@ -44,7 +44,7 @@ variable "app_port" {
 }
 
 variable "health_check_path" {
-  description = "HTTP path the ALB target group health check requests."
+  description = "HTTP path the ECS container-level health check requests (no ALB in this architecture, so this is what lets ECS detect and replace an unhealthy task)."
   type        = string
   default     = "/"
 }
@@ -189,6 +189,19 @@ variable "route53_zone_id" {
   description = "Route 53 hosted zone ID for var.domain_name. Required when domain_name is set."
   type        = string
   default     = ""
+}
+
+# --- Budget alert ---
+
+variable "monthly_budget_usd" {
+  description = "Monthly AWS spend limit (USD) that triggers budget alert emails."
+  type        = string
+  default     = "20"
+}
+
+variable "budget_notification_emails" {
+  description = "Email addresses to notify when spend crosses an alert threshold. Required — AWS Budgets needs at least one subscriber."
+  type        = list(string)
 }
 
 variable "tags" {

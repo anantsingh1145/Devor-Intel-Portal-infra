@@ -39,27 +39,6 @@ module "ecr" {
   tags                  = local.common_tags
 }
 
-module "acm" {
-  source = "./modules/acm"
-
-  domain_name = var.domain_name
-  zone_id     = var.route53_zone_id
-  tags        = local.common_tags
-}
-
-module "lb" {
-  source = "./modules/lb"
-
-  name              = "${local.name_prefix}-alb"
-  vpc_id            = module.vpc.vpc_id
-  subnet_ids        = module.vpc.public_subnet_ids
-  security_group_id = module.security_groups.alb_security_group_id
-  app_port          = var.app_port
-  health_check_path = var.health_check_path
-  certificate_arn   = module.acm.certificate_arn
-  tags              = local.common_tags
-}
-
 module "efs" {
   source = "./modules/efs"
 
@@ -142,12 +121,12 @@ module "fargate" {
   })
   secrets = module.secrets.secret_arns
 
-  log_group_name = module.logs.log_group_name
-  aws_region     = var.aws_region
+  log_group_name    = module.logs.log_group_name
+  aws_region        = var.aws_region
+  health_check_path = var.health_check_path
 
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security_groups.ecs_task_security_group_id]
-  target_group_arn   = module.lb.target_group_arn
 
   efs_file_system_id   = module.efs.file_system_id
   efs_access_point_id  = module.efs.access_point_id
@@ -172,8 +151,32 @@ module "fargate" {
 module "route53" {
   source = "./modules/route53"
 
-  zone_id      = var.route53_zone_id
-  domain_name  = var.domain_name
-  alb_dns_name = module.lb.alb_dns_name
-  alb_zone_id  = module.lb.alb_zone_id
+  zone_id     = var.route53_zone_id
+  domain_name = var.domain_name
+}
+
+# Only created when a custom domain is configured — with no ALB, there's
+# nothing to keep DNS in sync without this, since the Fargate task's public
+# IP changes on every restart/redeploy/autoscaling event.
+module "dns_sync" {
+  count = var.domain_name != "" && var.route53_zone_id != "" ? 1 : 0
+
+  source = "./modules/dns_sync"
+
+  name_prefix     = local.name_prefix
+  ecs_cluster_arn = module.ecs.cluster_arn
+  route53_zone_id = var.route53_zone_id
+  domain_name     = var.domain_name
+  tags            = local.common_tags
+
+  depends_on = [module.route53]
+}
+
+module "budget" {
+  source = "./modules/budget"
+
+  name                = "${local.name_prefix}-budget"
+  limit_amount        = var.monthly_budget_usd
+  notification_emails = var.budget_notification_emails
+  tags                = local.common_tags
 }

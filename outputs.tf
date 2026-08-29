@@ -1,11 +1,6 @@
-output "alb_dns_name" {
-  description = "ALB's public DNS name. If domain_name/route53_zone_id weren't set, this is how you reach Chronicle."
-  value       = module.lb.alb_dns_name
-}
-
 output "app_url" {
-  description = "Best-guess URL for reaching the app: the custom domain if configured, otherwise the ALB DNS name over HTTP."
-  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${module.lb.alb_dns_name}"
+  description = "Reachable here (HTTP only — no ALB/ACM in this architecture) a few seconds after the task starts, once modules/dns_sync updates the record. Null if no custom domain is configured — with no ALB and no static IP, there's no fixed address in that case; find the running task's current public IP via `aws ecs describe-tasks` / the ECS console instead."
+  value       = var.domain_name != "" ? "http://${var.domain_name}" : null
 }
 
 output "ecr_repository_url" {

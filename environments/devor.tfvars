@@ -70,6 +70,10 @@ efs_posix_gid = 1000
 domain_name     = ""
 route53_zone_id = ""
 
+# --- Budget alert: replace with your real email before applying ---
+monthly_budget_usd         = "20"
+budget_notification_emails = ["REPLACE_ME@example.com"]
+
 tags = {
   Owner = "anantsingh1145"
 }
