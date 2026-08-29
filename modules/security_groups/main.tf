@@ -10,7 +10,7 @@ module "ecs_task_sg" {
   version = "~> 5.0"
 
   name        = "${var.name_prefix}-ecs-task-sg"
-  description = "Chronicle ECS Fargate task — internet-facing (no ALB), allows inbound app traffic directly."
+  description = "Chronicle ECS Fargate task - internet-facing (no ALB), allows inbound app traffic directly."
   vpc_id      = var.vpc_id
 
   ingress_with_cidr_blocks = [
