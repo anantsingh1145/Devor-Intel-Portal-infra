@@ -44,7 +44,7 @@ variable "app_port" {
 }
 
 variable "health_check_path" {
-  description = "HTTP path the ECS container-level health check requests (no ALB in this architecture, so this is what lets ECS detect and replace an unhealthy task)."
+  description = "HTTP path both the ALB target group and the ECS container-level health check request."
   type        = string
   default     = "/"
 }
@@ -177,18 +177,12 @@ variable "efs_posix_gid" {
   default     = 1000
 }
 
-# --- Optional custom domain (leave both empty to skip ACM/HTTPS/Route53) ---
+# --- Custom domain (required — the app is reachable only through this
+# domain over HTTPS; the ALB rejects every other Host header) ---
 
 variable "domain_name" {
-  description = "Custom domain to serve Chronicle on, e.g. \"chronicle.example.com\". Leave empty to serve plain HTTP on the ALB's own DNS name."
+  description = "Fully qualified domain to serve Chronicle on, e.g. \"www.devor.net\". This domain's DNS is NOT assumed to be in Route 53 — the ACM validation record and the record pointing this domain at the ALB (see outputs.alb_dns_name) are created manually at whatever DNS provider hosts the domain."
   type        = string
-  default     = ""
-}
-
-variable "route53_zone_id" {
-  description = "Route 53 hosted zone ID for var.domain_name. Required when domain_name is set."
-  type        = string
-  default     = ""
 }
 
 # --- Budget alert ---

@@ -9,7 +9,7 @@ variable "vpc_id" {
 }
 
 variable "app_port" {
-  description = "Port the Chronicle container listens on — opened directly to the internet since there's no ALB in front."
+  description = "Port the Chronicle container listens on. Only reachable from the ALB security group, never directly from the internet."
   type        = number
 }
 

@@ -50,9 +50,9 @@ module "fargate_service" {
         }
       ]
 
-      # No ALB in this architecture, so ECS has no target-group health check
-      # to detect a stuck/crashed app — this container-level check is what
-      # lets ECS notice and replace an unhealthy task on its own.
+      # In addition to the ALB target-group health check, so ECS can also
+      # detect and replace a task that's up but wedged without waiting on
+      # ALB deregistration.
       health_check = {
         command     = ["CMD-SHELL", "curl -f http://localhost:${var.container_port}${var.health_check_path} || exit 1"]
         interval    = 30
@@ -88,10 +88,18 @@ module "fargate_service" {
   subnet_ids         = var.subnet_ids
   security_group_ids = var.security_group_ids
   # Tasks run in public subnets (no NAT Gateway, see modules/vpc), so they
-  # need a public IP to pull the image from ECR and reach the internet.
-  # No ALB in this architecture — that same public IP is also how the app is
-  # reached directly (see modules/dns_sync for keeping DNS pointed at it).
+  # need a public IP to pull the image from ECR. Inbound access on that IP
+  # is restricted to the ALB security group only (see modules/security_groups)
+  # - the ALB is the only supported way in.
   assign_public_ip = true
+
+  load_balancer = {
+    (var.name) = {
+      target_group_arn = var.target_group_arn
+      container_name   = var.name
+      container_port   = var.container_port
+    }
+  }
 
   desired_count = var.desired_count
 

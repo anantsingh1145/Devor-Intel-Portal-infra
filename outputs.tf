@@ -1,6 +1,16 @@
 output "app_url" {
-  description = "Reachable here (HTTP only — no ALB/ACM in this architecture) a few seconds after the task starts, once modules/dns_sync updates the record. Null if no custom domain is configured — with no ALB and no static IP, there's no fixed address in that case; find the running task's current public IP via `aws ecs describe-tasks` / the ECS console instead."
-  value       = var.domain_name != "" ? "http://${var.domain_name}" : null
+  description = "The only supported way to reach the app. Direct access via the ALB's own DNS name, the ECS task's IP, or plain HTTP is rejected/redirected."
+  value       = "https://${var.domain_name}"
+}
+
+output "alb_dns_name" {
+  description = "ALB's AWS-generated DNS name. Not a working app URL on its own (the listener rule rejects any Host header other than var.domain_name) — this is the CNAME target to use when pointing var.domain_name at the ALB at your DNS provider."
+  value       = module.alb.dns_name
+}
+
+output "acm_certificate_validation_record" {
+  description = "DNS record to create manually at your domain's DNS provider to validate the ACM certificate: { name, type, value }. terraform apply waits here until ACM sees it — add it, wait for propagation, then re-run apply."
+  value       = module.acm.validation_record
 }
 
 output "ecr_repository_url" {

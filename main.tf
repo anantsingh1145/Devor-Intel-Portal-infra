@@ -97,6 +97,28 @@ module "ecs" {
   tags                       = local.common_tags
 }
 
+module "acm" {
+  source = "./modules/acm"
+
+  domain_name = var.domain_name
+  tags        = local.common_tags
+}
+
+module "alb" {
+  source = "./modules/alb"
+
+  name_prefix       = local.name_prefix
+  vpc_id            = module.vpc.vpc_id
+  subnet_ids        = module.vpc.public_subnet_ids
+  security_group_id = module.security_groups.alb_security_group_id
+  certificate_arn   = module.acm.certificate_arn
+  domain_name       = var.domain_name
+  target_port       = var.app_port
+  health_check_path = var.health_check_path
+
+  tags = local.common_tags
+}
+
 module "fargate" {
   source = "./modules/fargate"
 
@@ -128,6 +150,8 @@ module "fargate" {
   subnet_ids         = module.vpc.public_subnet_ids
   security_group_ids = [module.security_groups.ecs_task_security_group_id]
 
+  target_group_arn = module.alb.target_group_arn
+
   efs_file_system_id   = module.efs.file_system_id
   efs_access_point_id  = module.efs.access_point_id
   container_mount_path = var.container_mount_path
@@ -141,35 +165,12 @@ module "fargate" {
 
   tags = local.common_tags
 
-  # No output from module.bedrock is actually consumed above (the task role
-  # ARN already comes from module.iam) — but the running task needs Bedrock
-  # invoke permission to exist before it starts, so this is an explicit,
-  # honest dependency edge rather than an implicit one.
-  depends_on = [module.bedrock]
-}
-
-module "route53" {
-  source = "./modules/route53"
-
-  zone_id     = var.route53_zone_id
-  domain_name = var.domain_name
-}
-
-# Only created when a custom domain is configured — with no ALB, there's
-# nothing to keep DNS in sync without this, since the Fargate task's public
-# IP changes on every restart/redeploy/autoscaling event.
-module "dns_sync" {
-  count = var.domain_name != "" && var.route53_zone_id != "" ? 1 : 0
-
-  source = "./modules/dns_sync"
-
-  name_prefix     = local.name_prefix
-  ecs_cluster_arn = module.ecs.cluster_arn
-  route53_zone_id = var.route53_zone_id
-  domain_name     = var.domain_name
-  tags            = local.common_tags
-
-  depends_on = [module.route53]
+  # module.bedrock: the running task needs Bedrock invoke permission to
+  # exist before it starts. module.alb: the ALB's listener/listener rule
+  # must exist before ECS tries to register targets against its target
+  # group. Both are explicit, honest dependency edges rather than implicit
+  # ones.
+  depends_on = [module.bedrock, module.alb]
 }
 
 module "budget" {

@@ -80,9 +80,14 @@ variable "security_group_ids" {
 }
 
 variable "health_check_path" {
-  description = "HTTP path the container-level health check requests (no ALB in this architecture, so this is what lets ECS detect and replace an unhealthy task). Requires curl to be present in the container image."
+  description = "HTTP path the container-level health check requests. Requires curl to be present in the container image."
   type        = string
   default     = "/"
+}
+
+variable "target_group_arn" {
+  description = "ALB target group ARN (from modules/alb) to register tasks with."
+  type        = string
 }
 
 variable "efs_file_system_id" {

@@ -72,11 +72,15 @@ ecr_force_delete          = false
 efs_posix_uid = 1000
 efs_posix_gid = 1000
 
-# --- No custom domain yet: reach it via the ALB's own DNS name over HTTP ---
-domain_name     = ""
-route53_zone_id = ""
+# --- Custom domain: app is reachable ONLY via this domain over HTTPS ---
+# devor.net's nameservers stay at GoDaddy (not migrated to Route 53).
+# After apply: terraform output acm_certificate_validation_record ->
+# add that CNAME at GoDaddy -> wait for propagation -> re-apply -> then
+# terraform output alb_dns_name -> add a CNAME "www" -> that value at GoDaddy.
+domain_name = "www.devor.net"
 
-# --- Budget alert: replace with your real email before applying ---
+# --- Budget alert: the ALB adds a fixed hourly cost on top of everything
+# else here — raise this once you see the real number, don't leave it at 20.
 monthly_budget_usd         = "20"
 budget_notification_emails = ["chronicle@devor.net"]
 
