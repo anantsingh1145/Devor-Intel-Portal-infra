@@ -19,10 +19,16 @@ desired_count = 1
 container_mount_path = "/data"
 
 app_environment = {
-  SMTP_HOST        = "smtp.gmail.com"
+  # chronicle@devor.net is GoDaddy Workspace Email — smtpout.secureserver.net
+  # authenticates with that mailbox's regular password (no separate app
+  # password for this product, unlike Gmail/Microsoft 365).
+  SMTP_HOST        = "smtpout.secureserver.net"
   SMTP_PORT        = "587"
-  SMTP_USER        = "chronicle@example.com"
+  SMTP_USER        = "chronicle@devor.net"
   EMAIL_RECIPIENTS = "you@example.com"
+  # Points the app's SQLite file at the EFS mount (container_mount_path
+  # above) so chronicle.db survives task restarts/redeploys.
+  CHRONICLE_DB_PATH = "/data/chronicle.db"
 }
 # BEDROCK_MODEL_ID and AWS_REGION are merged into the container's environment
 # in main.tf (from bedrock_inference_profile_id/aws_region below) — not
@@ -40,8 +46,8 @@ app_environment = {
 # ap-south-1 may not host Claude directly; a cross-region profile (e.g. an
 # "apac." prefix) may be required, and its primary invocation region may
 # differ from ap-south-1 — confirm both before relying on this.
-bedrock_inference_profile_id = "REPLACE_ME_apac.anthropic.claude-<model>-<date>-v<N>:0"
-bedrock_foundation_model_id  = "REPLACE_ME_anthropic.claude-<model>-<date>-v<N>:0"
+bedrock_inference_profile_id = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+bedrock_foundation_model_id  = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 # --- Autoscaling ---
 enable_autoscaling       = true
@@ -72,7 +78,7 @@ route53_zone_id = ""
 
 # --- Budget alert: replace with your real email before applying ---
 monthly_budget_usd         = "20"
-budget_notification_emails = ["REPLACE_ME@example.com"]
+budget_notification_emails = ["chronicle@devor.net"]
 
 tags = {
   Owner = "anantsingh1145"
