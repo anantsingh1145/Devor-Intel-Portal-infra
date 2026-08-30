@@ -2,10 +2,15 @@
 # DNS validation CNAME can't be created by Terraform - it's surfaced via
 # outputs.validation_record for manual creation at GoDaddy instead.
 #
-# aws_acm_certificate_validation blocks here until ACM sees that CNAME and
-# issues the certificate, so the first apply after adding this module will
-# hang/time out until the record is added and has propagated - that's
-# expected, not a bug. Re-running apply once DNS has propagated proceeds.
+# Bootstrap this module BEFORE running the full apply (in CI or anywhere
+# else), since nothing can pause an unattended apply mid-run for a manual
+# DNS step:
+#   1. terraform apply -target=module.acm.aws_acm_certificate.this
+#   2. terraform output acm_certificate_validation_record -> add that CNAME
+#      at GoDaddy, wait for it to resolve (dig <name> CNAME)
+#   3. terraform apply (full) - validation now completes in well under the
+#      10m timeout below, instead of hanging until it eats the CI job's
+#      OIDC session and fails to persist state.
 resource "aws_acm_certificate" "this" {
   domain_name       = var.domain_name
   validation_method = "DNS"
@@ -18,4 +23,12 @@ resource "aws_acm_certificate" "this" {
 
 resource "aws_acm_certificate_validation" "this" {
   certificate_arn = aws_acm_certificate.this.arn
+
+  # Default wait is long enough to run past the CI job's ~1h OIDC session
+  # (github's aws-actions/configure-aws-credentials), which then fails to
+  # persist state on top of the real failure (missing CNAME). Fail fast
+  # instead - see the bootstrap sequence note above.
+  timeouts {
+    create = "10m"
+  }
 }
