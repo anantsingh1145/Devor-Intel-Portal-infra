@@ -24,6 +24,24 @@ data "aws_iam_policy_document" "bedrock_invoke" {
       "arn:aws:bedrock:*::foundation-model/${var.foundation_model_id}",
     ]
   }
+
+  # Anthropic models are sold through AWS Marketplace - Bedrock auto-subscribes
+  # on the first-ever invocation of a given model in the account, but only if
+  # the calling identity holds these. Without them, that first call fails with
+  # AccessDeniedException instead of self-healing. Not scoped by product ID:
+  # ViewSubscriptions/Unsubscribe don't support resource-level scoping at all,
+  # and this only covers the one-time auto-enable, not ongoing invoke access.
+  statement {
+    sid = "MarketplaceAutoSubscribe"
+
+    actions = [
+      "aws-marketplace:Subscribe",
+      "aws-marketplace:Unsubscribe",
+      "aws-marketplace:ViewSubscriptions",
+    ]
+
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "bedrock_invoke" {
