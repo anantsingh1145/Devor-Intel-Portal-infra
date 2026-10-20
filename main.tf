@@ -101,6 +101,8 @@ module "acm" {
   source = "./modules/acm"
 
   domain_name = var.domain_name
+  root_domain = var.root_domain
+  zone_id     = aws_route53_zone.this.zone_id
   tags        = local.common_tags
 }
 
@@ -113,6 +115,7 @@ module "alb" {
   security_group_id = module.security_groups.alb_security_group_id
   certificate_arn   = module.acm.certificate_arn
   domain_name       = var.domain_name
+  root_domain       = var.root_domain
   target_port       = var.app_port
   health_check_path = var.health_check_path
 

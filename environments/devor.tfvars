@@ -73,11 +73,19 @@ efs_posix_uid = 1000
 efs_posix_gid = 1000
 
 # --- Custom domain: app is reachable ONLY via this domain over HTTPS ---
-# devor.net's nameservers stay at GoDaddy (not migrated to Route 53).
-# After apply: terraform output acm_certificate_validation_record ->
-# add that CNAME at GoDaddy -> wait for propagation -> re-apply -> then
-# terraform output alb_dns_name -> add a CNAME "www" -> that value at GoDaddy.
+# DNS is hosted in Route 53 (see dns.tf for the nameserver-switch bootstrap).
+# Apex and www both serve the app.
 domain_name = "www.devor.net"
+root_domain = "devor.net"
+
+# Recreate GoDaddy Workspace email records here - they vanish on NS switch.
+# Verify against GoDaddy's DNS page before switching nameservers.
+extra_dns_records = {
+  mx    = { name = "devor.net", type = "MX", records = ["10 mailstore1.secureserver.net.", "0 smtp.secureserver.net."] }
+  spf   = { name = "devor.net", type = "TXT", records = ["v=spf1 include:secureserver.net -all"] }
+  dmarc = { name = "_dmarc.devor.net", type = "TXT", records = ["v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net;"] }
+  email = { name = "email.devor.net", type = "CNAME", records = ["email.secureserver.net."] }
+}
 
 # --- Budget alert: the ALB adds a fixed hourly cost on top of everything
 # else here — raise this once you see the real number, don't leave it at 20.

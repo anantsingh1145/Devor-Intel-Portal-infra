@@ -83,7 +83,7 @@ resource "aws_lb_listener_rule" "app" {
 
   condition {
     host_header {
-      values = [var.domain_name]
+      values = [var.domain_name, var.root_domain]
     }
   }
 }

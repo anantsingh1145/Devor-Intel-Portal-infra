@@ -44,3 +44,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "root_domain" {
+  description = "Apex domain (e.g. \"devor.net\") also routed to the app, alongside domain_name."
+  type        = string
+}

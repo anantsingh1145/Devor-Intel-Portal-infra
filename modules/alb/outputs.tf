@@ -3,6 +3,11 @@ output "dns_name" {
   value       = aws_lb.this.dns_name
 }
 
+output "zone_id" {
+  description = "ALB's canonical hosted zone ID, needed for Route 53 alias records."
+  value       = aws_lb.this.zone_id
+}
+
 output "target_group_arn" {
   description = "Target group ARN the ECS service registers tasks with."
   value       = aws_lb_target_group.app.arn

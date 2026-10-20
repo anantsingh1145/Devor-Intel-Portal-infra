@@ -1,33 +1,36 @@
-# devor.net's nameservers stay at GoDaddy (not migrated to Route 53), so the
-# DNS validation CNAME can't be created by Terraform - it's surfaced via
-# outputs.validation_record for manual creation at GoDaddy instead.
-#
-# Bootstrap this module BEFORE running the full apply (in CI or anywhere
-# else), since nothing can pause an unattended apply mid-run for a manual
-# DNS step:
-#   1. terraform apply -target=module.acm.aws_acm_certificate.this
-#   2. terraform output acm_certificate_validation_record -> add that CNAME
-#      at GoDaddy, wait for it to resolve (dig <name> CNAME)
-#   3. terraform apply (full) - validation now completes in well under the
-#      10m timeout below, instead of hanging until it eats the CI job's
-#      OIDC session and fails to persist state.
+# Cert covers var.domain_name (www) plus var.root_domain (apex). DNS validation
+# records are created in the Route 53 zone (var.zone_id), so no manual DNS step.
+# The zone's nameservers must already be delegated at the registrar - see
+# dns.tf for the bootstrap sequence.
 resource "aws_acm_certificate" "this" {
-  domain_name       = var.domain_name
-  validation_method = "DNS"
-  tags              = var.tags
+  domain_name               = var.domain_name
+  subject_alternative_names = [var.root_domain]
+  validation_method         = "DNS"
+  tags                      = var.tags
 
   lifecycle {
     create_before_destroy = true
   }
 }
 
-resource "aws_acm_certificate_validation" "this" {
-  certificate_arn = aws_acm_certificate.this.arn
+resource "aws_route53_record" "validation" {
+  for_each = {
+    for o in aws_acm_certificate.this.domain_validation_options : o.domain_name => o
+  }
 
-  # Default wait is long enough to run past the CI job's ~1h OIDC session
-  # (github's aws-actions/configure-aws-credentials), which then fails to
-  # persist state on top of the real failure (missing CNAME). Fail fast
-  # instead - see the bootstrap sequence note above.
+  zone_id         = var.zone_id
+  name            = each.value.resource_record_name
+  type            = each.value.resource_record_type
+  records         = [each.value.resource_record_value]
+  ttl             = 60
+  allow_overwrite = true
+}
+
+resource "aws_acm_certificate_validation" "this" {
+  certificate_arn         = aws_acm_certificate.this.arn
+  validation_record_fqdns = [for r in aws_route53_record.validation : r.fqdn]
+
+  # Fail fast if the registrar nameservers haven't been switched yet.
   timeouts {
     create = "10m"
   }

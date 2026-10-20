@@ -203,3 +203,18 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "root_domain" {
+  description = "Apex domain served by Route 53 and routed to the app, e.g. \"devor.net\"."
+  type        = string
+}
+
+variable "extra_dns_records" {
+  description = "Non-app DNS records to recreate in the Route 53 zone (mail MX/SPF/DMARC etc.) so they survive the nameserver switch."
+  type = map(object({
+    name    = string
+    type    = string
+    records = list(string)
+  }))
+  default = {}
+}
