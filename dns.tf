@@ -13,6 +13,13 @@
 resource "aws_route53_zone" "this" {
   name = var.root_domain
   tags = local.common_tags
+
+  # Destroying the zone while GoDaddy still delegates to it leaves dangling
+  # nameservers someone else could claim. Revert the GoDaddy nameservers
+  # first, then remove this guard to delete the zone.
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_route53_record" "apex" {
