@@ -2,6 +2,11 @@ name: Deploy Infra for Devor
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Optional terraform -target address (e.g. aws_route53_zone.this) for a partial plan/apply. Leave empty for a full run."
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -91,12 +96,23 @@ jobs:
       # No TF_VAR_secrets needed: secret_names is just a list of names (not
       # sensitive), and no secret values are ever supplied through Terraform —
       # they're set manually in Secrets Manager after apply.
+      # Target comes in via env, never interpolated into the script, and is
+      # restricted to a resource address so it can't inject shell/flags.
       - name: Terraform plan
+        env:
+          TF_TARGET: ${{ inputs.target }}
         run: |
+          target_args=()
+          if [ -n "$TF_TARGET" ]; then
+            re='^[A-Za-z0-9_][]A-Za-z0-9_.["-]*$'
+            [[ "$TF_TARGET" =~ $re ]] || { echo "invalid target"; exit 1; }
+            target_args=(-target="$TF_TARGET")
+          fi
           terraform plan \
             -var-file=environments/devor.tfvars \
             -input=false \
             -no-color \
+            "${target_args[@]}" \
             -out=tfplan
 
       # The plan file itself still contains unredacted secret values even

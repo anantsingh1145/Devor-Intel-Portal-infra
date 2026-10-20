@@ -8,9 +8,9 @@ output "alb_dns_name" {
   value       = module.alb.dns_name
 }
 
-output "acm_certificate_validation_record" {
-  description = "DNS record to create manually at your domain's DNS provider to validate the ACM certificate: { name, type, value }. terraform apply waits here until ACM sees it — add it, wait for propagation, then re-run apply."
-  value       = module.acm.validation_record
+output "name_servers" {
+  description = "Set these as devor.net's custom nameservers at GoDaddy to delegate DNS to Route 53."
+  value       = aws_route53_zone.this.name_servers
 }
 
 output "ecr_repository_url" {
