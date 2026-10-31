@@ -7,7 +7,7 @@ module "ecr" {
   repository_type = "private"
 
   repository_image_scan_on_push   = true
-  repository_image_tag_mutability = "IMMUTABLE"
+  repository_image_tag_mutability = "MUTABLE" # deploy-app force-pushes :latest; IMMUTABLE rejects it
   repository_force_delete         = var.force_delete
 
   repository_lifecycle_policy = jsonencode({
