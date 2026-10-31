@@ -169,11 +169,12 @@ module "fargate" {
   tags = local.common_tags
 
   # module.bedrock: the running task needs Bedrock invoke permission to
-  # exist before it starts. module.alb: the ALB's listener/listener rule
-  # must exist before ECS tries to register targets against its target
-  # group. Both are explicit, honest dependency edges rather than implicit
-  # ones.
-  depends_on = [module.bedrock, module.alb]
+  # exist before it starts. The ALB listener rule ordering is carried by
+  # module.alb's target_group_arn output instead of depends_on here: a
+  # module-level depends_on on module.alb defers every data source inside
+  # this module whenever the ALB has pending changes, which made vpc_id
+  # unknown and forced the service security group to be replaced.
+  depends_on = [module.bedrock]
 }
 
 module "budget" {

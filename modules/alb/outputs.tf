@@ -9,8 +9,9 @@ output "zone_id" {
 }
 
 output "target_group_arn" {
-  description = "Target group ARN the ECS service registers tasks with."
+  description = "Target group ARN the ECS service registers tasks with. Depends on the listener rule so the service is only created once the target group is attached to a listener."
   value       = aws_lb_target_group.app.arn
+  depends_on  = [aws_lb_listener_rule.app]
 }
 
 output "https_listener_arn" {
