@@ -34,10 +34,10 @@ app_environment = {
 # in main.tf (from bedrock_inference_profile_id/aws_region below) — not
 # listed here, to keep the model ID in one place.
 
-# secret_names uses its default (SERPER_API_KEY, SMTP_PASSWORD, WEBHOOK_URL) —
+# secret_names uses its default (SERPER_API_KEY, SMTP_PASSWORD, WEBHOOK_URL, GEMINI_API_KEY) —
 # no code-supplied values anywhere. Set each one manually after apply:
 #   aws secretsmanager put-secret-value --secret-id devor/prod/SERPER_API_KEY --secret-string '<value>'
-# (repeat per secret). The ECS task will fail to start until all 3 have values.
+# (repeat per secret). The ECS task will fail to start until all 4 have values.
 
 # --- Bedrock (Claude via AWS Bedrock, no Anthropic API key needed) ---
 # PLACEHOLDERS — verify before applying:
