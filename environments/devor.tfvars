@@ -29,15 +29,18 @@ app_environment = {
   # Points the app's SQLite file at the EFS mount (container_mount_path
   # above) so chronicle.db survives task restarts/redeploys.
   CHRONICLE_DB_PATH = "/data/chronicle.db"
+  # Google sign-in (st.login) returns here; must match the OAuth client exactly.
+  AUTH_REDIRECT_URI = "https://www.devor.net/oauth2callback"
 }
 # BEDROCK_MODEL_ID and AWS_REGION are merged into the container's environment
 # in main.tf (from bedrock_inference_profile_id/aws_region below) — not
 # listed here, to keep the model ID in one place.
 
-# secret_names uses its default (SERPER_API_KEY, SMTP_PASSWORD, WEBHOOK_URL, GEMINI_API_KEY) —
+# secret_names uses its default (SERPER_API_KEY, SMTP_PASSWORD, WEBHOOK_URL, GEMINI_API_KEY,
+# GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AUTH_COOKIE_SECRET) —
 # no code-supplied values anywhere. Set each one manually after apply:
 #   aws secretsmanager put-secret-value --secret-id devor/prod/SERPER_API_KEY --secret-string '<value>'
-# (repeat per secret). The ECS task will fail to start until all 4 have values.
+# (repeat per secret). The ECS task will fail to start until all 7 have values.
 
 # --- Bedrock (Claude via AWS Bedrock, no Anthropic API key needed) ---
 # PLACEHOLDERS — verify before applying:
