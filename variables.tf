@@ -88,7 +88,7 @@ variable "app_environment" {
 variable "secret_names" {
   description = "Container env var names to create as empty Secrets Manager secrets (e.g. [\"SERPER_API_KEY\", \"SMTP_PASSWORD\"]). Terraform only creates the secret container — no value is ever set here or anywhere else in code. Populate the actual value manually after apply, e.g. `aws secretsmanager put-secret-value --secret-id <name> --secret-string '<value>'`, or via the console. The task will fail to start until every secret listed here has a value."
   type        = list(string)
-  default     = ["SERPER_API_KEY", "SMTP_PASSWORD", "WEBHOOK_URL", "GEMINI_API_KEY"]
+  default     = ["SERPER_API_KEY", "SMTP_PASSWORD", "WEBHOOK_URL", "GEMINI_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "AUTH_COOKIE_SECRET"]
 }
 
 # --- Bedrock (Claude via AWS Bedrock, replacing a direct Anthropic API key) ---
